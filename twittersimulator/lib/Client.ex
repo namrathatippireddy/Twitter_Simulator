@@ -1,9 +1,12 @@
 defmodule Client do
+
   def init(client_state) do
     state = %{
       "engine_pid" => Enum.at(client_state, 0)
       # {}"users_list" => Enum.at(client_state,0)
     }
+
+
     Enum.each(1..10, fn hashtag ->
       hashtag_id = "#h#{hashtag}"
       :ets.insert_new(:hashtags, {hashtag_id, []})
@@ -87,7 +90,20 @@ defmodule Client do
   def handle_cast({:receiveTweet, tweet_content}, state) do
     IO.puts "receiving tweets"
     IO.puts tweet_content
+    #TODO: might want to retweet.
+    #maintain a list of tweets using Map.update(a,1,[],fn list -> list ++ [tweet] end)
+    #%{1 => [23]}
     {:noreply, state}
+  end
+
+  #this happens when a user logs in
+  def handle_cast({:receiveFeed, tweets_content}, state) do
+    IO.puts "receiving feed"
+    {:noreply, state}
+  end
+
+  def handle_cast({:reTweet}, state) do
+
   end
 
   #Search for tweets with a given hashtag
