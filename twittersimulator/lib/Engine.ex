@@ -3,8 +3,9 @@ defmodule Engine do
 
   def init(engine_state) do
     state = %{}
-    :ets.new(:users, [:set, :public, :named_table])
-    :ets.new(:following, [:set, :public, :named_table])
+    :ets.new(:users, [:set, :public, :named_table]) #userID (key), list of followers (value)
+    :ets.new(:following, [:set, :public, :named_table]) #userID (key), list of users being followed by user
+    #:ets.new(:followers, [:set, :public, :named_table])
 
     :ets.new(:tweets, [
       :set,
@@ -30,7 +31,7 @@ defmodule Engine do
       {:write_concurrency, true}
     ])
 
-    :ets.new(:loggedInUsers, [:set, :public, :named_table])
+    :ets.new(:userLogIn, [:set, :public, :named_table])
 
     {:ok, state}
   end
@@ -39,13 +40,26 @@ defmodule Engine do
     :ets.insert_new(:users, {user_id, []})
     mention_id = "@#{user_id}"
     #IO.puts("Mention id is #{mention_id}")
-    :ets.insert_new(:loggedInUsers, {user_id, true})
+    :ets.insert_new(:userLogIn, {user_id, true})
     :ets.insert_new(:mentionIds, {mention_id,[]})
     {:noreply, state}
   end
 
+  def handle_cast({:login_user, user_id}, state) do
+    :ets.insert(:userLogIn, {user_id, true})
+    #user has logged in
+    #TODO: push all the tweets the user is subscribed to
+    #do  receiveFeed on client
+    {:noreply, state}
+  end
+
+  def handle_cast({:logout_user, user_id, state}) do
+    :ets.insert(:userLogIn, {user_id, false})
+    {:noreply, state}
+  end
+
   def handle_cast({:handle_tweet, user_id, tweet_content}, state) do
-    #Once an user tweets, the engine should get the subscribers of the user and then extract the
+    #Once a user tweets, the engine should get the subscribers of the user and then extract the
     #hashtags and mentions, if there is hashtag, then insert the tweet into the table with that hashtag as key
     #if there is a mention, then get the user who is mentioned and add it to the mentions table
     #Also while sending the tweet to the subscriber, check if he is logged in using the loggedIn table, if yes, then send it.
@@ -65,9 +79,9 @@ defmodule Engine do
       end
       :ets.insert(:hashtags, {each_ht, ht_tweet})
     end)
-  end
+    end
 
-  if(length(list_of_mentions) > 0) do
+    if(length(list_of_mentions) > 0) do
     Enum.each(list_of_mentions, fn each_mention ->
       mention_tweet = cond do
         :ets.member(:mentionIds, each_mention) ->
@@ -77,19 +91,16 @@ defmodule Engine do
       end
       :ets.insert(:mentionIds, {each_mention, mention_tweet})
     end)
-  end
+    end
 
-  #get the subscribers for the given user_id and forward the tweet
-  [{_, subscriber_list}] = :ets.lookup(:users, user_id)
-  Enum.each(subscriber_list, fn subscriber ->
+    #get the subscribers for the given user_id and forward the tweet
+    [{_, subscriber_list}] = :ets.lookup(:users, user_id)
+    Enum.each(subscriber_list, fn subscriber ->
       GenServer.cast(subscriber, {:receiveTweet, tweet_content})
-  end)
-
-
-
+    end)
   end
 
-  #UserToSub_id is the one you want to follow, user_id our id
+  #UserToSub_id is the one you want to follow, user_id is the one following
   def handle_cast({:subscribe_user, userToSubscibe_id, user_id}, state) do
     #we are updating the followers list of UserToSub_id
     [{userToSubscibe_id, followers}] = :ets.lookup(:users, userToSubscibe_id)
@@ -121,4 +132,14 @@ defmodule Engine do
   end
 
 
+
 end
+
+'''
+// to select from a table with multiple keys
+:ets.select(table, (for key <- my_keys, do: {{key, :_}, [], [:"$_"]}))
+[
+  a: [{:banana, :orange, 10}, {:tomato, :potato, 6}],
+  b: [{:car, :moto, 1}, {:plane, :heli, 60}]
+]
+'''
