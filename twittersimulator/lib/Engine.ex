@@ -95,10 +95,10 @@ defmodule Engine do
     :ets.insert(:userTweets, {user_id, tweet})
     # Utils.handle_tweet(user_id, tweet_content)
     list_of_hashtags = Utils.get_hashtags(tweet_content)
-    Utils.insert_into_hashtagTable(list_of_hashtags, tweet)
+    Utils.insert_into_hashtagTable(list_of_hashtags, {tweet_owner, tweet_content})
 
     mentions_list = Utils.get_mentions(tweet_content)
-    Utils.insert_into_mentionsTable(mentions_list, tweet)
+    Utils.insert_into_mentionsTable(mentions_list, {tweet_owner, tweet_content})
 
     Utils.send_tweet_to_subscribers(user_id, {tweet_owner, tweet_content})
 

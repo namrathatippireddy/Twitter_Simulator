@@ -126,8 +126,8 @@ defmodule Client do
   end
 
   def handle_cast({:reTweet, user_id, retweet}, state) do
-    IO.puts("retweeting")
-    [{tweet_owner, tweet_content}] = retweet
+    IO.puts("retweetinggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg")
+    {tweet_owner, tweet_content} = retweet
     # {:ok, engine_name} = Map.fetch(state, "engine_pid")
     GenServer.cast(String.to_atom("engine"), {:handle_tweet, user_id, tweet_content, tweet_owner})
     {:noreply, state}
