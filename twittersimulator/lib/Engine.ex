@@ -70,7 +70,7 @@ defmodule Engine do
     {:noreply, state}
   end
 
-  def handle_cast({:handle_tweet, user_id, tweet_content}, state) do
+  def handle_cast({:handle_tweet, user_id, tweet_content, tweet_owner}, state) do
     # Once a user tweets, the engine should get the subscribers of the user and then extract the
     # hashtags and mentions, if there is hashtag, then insert the tweet into the table with that hashtag as key
     # if there is a mention, then get the user who is mentioned and add it to the mentions table
@@ -80,16 +80,36 @@ defmodule Engine do
     # We can give the query processing time here, start the timer when the query has been received and calcuate the endtime when the tweet
     # has been sent to all the subscribers
     IO.puts("Handle tweet")
-    IO.puts(tweet_content)
+    IO.inspect(tweet_content)
 
-    Utils.handle_tweet(user_id, tweet_content)
+    tweet =
+      cond do
+        :ets.member(:userTweets, user_id) ->
+          [{_, tweets}] = :ets.lookup(:userTweets, user_id)
+          tweets ++ [{tweet_owner, tweet_content}]
+
+        true ->
+          [{tweet_owner, tweet_content}]
+      end
+
+    :ets.insert(:userTweets, {user_id, tweet})
+    # Utils.handle_tweet(user_id, tweet_content)
+    list_of_hashtags = Utils.get_hashtags(tweet_content)
+    Utils.insert_into_hashtagTable(list_of_hashtags, tweet)
+
+    mentions_list = Utils.get_mentions(tweet_content)
+    Utils.insert_into_mentionsTable(mentions_list, tweet)
+
+    Utils.send_tweet_to_subscribers(user_id, {tweet_owner, tweet_content})
 
     {:noreply, state}
   end
 
   # UserToSub_id is the one you want to follow, user_id is the one following
   def handle_cast({:subscribe_user, userToSubscibe_id, user_id}, state) do
-    Utils.subscribe_user(userToSubscibe_id, user_id)
+    # Utils.subscribe_user(userToSubscibe_id, user_id)
+    Utils.update_followers_list(userToSubscibe_id, user_id)
+    Utils.update_following_list(userToSubscibe_id, user_id)
     {:noreply, state}
   end
 

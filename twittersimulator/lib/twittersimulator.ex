@@ -40,12 +40,14 @@ defmodule TwitterSimulator do
 
     Enum.each(1..num_users, fn user ->
       {:ok, _user} =
-        GenServer.start_link(Client, [hashtag_list], name: String.to_atom(Integer.to_string(user)))
+        GenServer.start_link(Client, [hashtag_list, user],
+          name: String.to_atom(Integer.to_string(user))
+        )
 
       IO.puts("registering created users")
-      GenServer.cast(String.to_atom(to_string(user)), {:register, user})
+      GenServer.cast(String.to_atom(to_string(user)), {:register})
       IO.puts("Asking users to subscribe ")
-      GenServer.cast(String.to_atom(to_string(user)), {:subscribe, user, num_users})
+      GenServer.cast(String.to_atom(to_string(user)), {:subscribe, num_users})
       # Make each user do one random action
       # action_list = [1,2,3,4]
       action_list = [1]
@@ -54,7 +56,7 @@ defmodule TwitterSimulator do
       cond do
         # Tweet
         action == 1 ->
-          GenServer.cast(String.to_atom(to_string(user)), {:send_tweets, user, num_users})
+          GenServer.cast(String.to_atom(to_string(user)), {:send_tweets, num_users})
           # Search a hashtag
           # action ==2 ->
           #   #Again we can search for one hashtag or multiple hashtags

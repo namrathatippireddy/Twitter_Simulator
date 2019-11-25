@@ -5,7 +5,7 @@ defmodule Utils do
     :ets.new(:following, [:set, :public, :named_table])
     # :ets.new(:followers, [:set, :public, :named_table])
 
-    :ets.new(:tweets, [
+    :ets.new(:userTweets, [
       :set,
       :public,
       :named_table,
@@ -48,29 +48,36 @@ defmodule Utils do
     :ets.insert(:userLogIn, {user_id, false})
   end
 
-  def handle_tweet(user_id, tweet_content) do
-    list_of_hashtags = get_hashtags(tweet_content)
+  def insert_into_hashtagTable(list_of_hashtags, tweet_content) do
     IO.inspect(list_of_hashtags)
 
     if(length(list_of_hashtags) > 0) do
+      IO.puts("handling tweet #{list_of_hashtags}")
+
       Enum.each(list_of_hashtags, fn each_ht ->
+        # IO.inspect(">>>>>>>>>>>>>>>>>>>>>>>>>> #{each_ht} ")
+
         ht_tweet =
           cond do
             :ets.member(:hashtags, each_ht) ->
+              # IO.puts("hashtagggggggggggggggggggggggggggggggggggggggg #{each_ht}")
               [{_, tweets_for_ht}] = :ets.lookup(:hashtags, each_ht)
               tweets_for_ht ++ [tweet_content]
 
             true ->
+              # IO.puts("nooooooooooooooooooooooooooooooooooooooo ")
               [tweet_content]
           end
 
         :ets.insert(:hashtags, {each_ht, ht_tweet})
+        # IO.puts("Insertion complete")
+        # a = :ets.lookup(:hashtags, "#h123")
+        # IO.inspect(a)
       end)
     end
+  end
 
-    mentions_list = get_mentions(tweet_content)
-    IO.inspect(mentions_list)
-
+  def insert_into_mentionsTable(mentions_list, tweet_content) do
     if(length(mentions_list) > 0) do
       Enum.each(mentions_list, fn each_mention ->
         mention_tweet =
@@ -86,23 +93,27 @@ defmodule Utils do
         :ets.insert(:mentionIds, {each_mention, mention_tweet})
       end)
     end
+  end
 
+  def send_tweet_to_subscribers(user_id, tweet_content) do
     # get the subscribers for the given user_id and forward the tweet
-    [{_, subscriber_list}] = :ets.lookup(:users, user_id)
-    # IO.inspect(subscriber_list)
+    if :ets.member(:users, user_id) do
+      [{_, subscriber_list}] = :ets.lookup(:users, user_id)
+      # IO.inspect(subscriber_list)
 
-    Enum.each(subscriber_list, fn subscriber ->
-      # IO.puts("subscriber is ")
-      # IO.inspect(subscriber)
-      [{_, loggedIn}] = :ets.lookup(:userLogIn, subscriber)
+      Enum.each(subscriber_list, fn subscriber ->
+        # IO.puts("subscriber is ")
+        # IO.inspect(subscriber)
+        [{_, loggedIn}] = :ets.lookup(:userLogIn, subscriber)
 
-      if(loggedIn) do
-        GenServer.cast(
-          String.to_atom(to_string(subscriber)),
-          {:receiveTweet, subscriber, tweet_content}
-        )
-      end
-    end)
+        if(loggedIn) do
+          GenServer.cast(
+            String.to_atom(to_string(subscriber)),
+            {:receiveTweet, subscriber, tweet_content}
+          )
+        end
+      end)
+    end
   end
 
   def get_hashtags(tweet_content) do
@@ -133,11 +144,13 @@ defmodule Utils do
     list_of_mentions
   end
 
-  def subscribe_user(userToSubscibe_id, user_id) do
+  def update_followers_list(userToSubscibe_id, user_id) do
     # we are updating the followers list of UserToSub_id
     followers_list = get_followers(userToSubscibe_id, user_id)
     :ets.insert(:users, {userToSubscibe_id, followers_list})
+  end
 
+  def update_following_list(userToSubscibe_id, user_id) do
     # we also update the following table of the present user who called this function
     subscribed_list = get_following(userToSubscibe_id, user_id)
     :ets.insert(:following, {user_id, subscribed_list})
