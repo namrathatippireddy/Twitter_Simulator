@@ -61,11 +61,12 @@ defmodule Engine do
     # user has logged in
     # TODO: push all the tweets the user is subscribed to
     # do  receiveFeed on client
-    Utils.{:noreply, state}
+    Utils.login_user(user_id)
+    {:noreply, state}
   end
 
   def handle_cast({:logout_user, user_id, state}) do
-    :ets.insert(:userLogIn, {user_id, false})
+    Utils.logout_user(user_id)
     {:noreply, state}
   end
 
