@@ -13,39 +13,52 @@ defmodule TwitterSimulator do
 
     # Start the engine
     IO.puts("Starting engine")
-    {:ok, engine_name} = GenServer.start_link(Engine, [], name: String.to_atom("engine_" <> "1"))
 
-    start_simulating(number_of_users, engine_name)
+    {:ok, engine_name} = GenServer.start_link(Engine, [], name: String.to_atom("engine"))
+    # {:ok, engine_name} = GenServer.start_link(Engine, [])
+    hashtag_list =
+      Enum.map(1..10, fn hashtag ->
+        hashtag_id = "#h#{hashtag}"
+      end)
+
+    IO.inspect(hashtag_list)
+
+    start_simulating(number_of_users, engine_name, hashtag_list)
+
+    receive do
+    end
   end
 
-  def start_simulating(number_of_users, engine_name) do
+  def start_simulating(number_of_users, engine_name, hashtag_list) do
     # First create users i.e start clients
     # IO.puts "Number of users is #{number_of_users}"
-    create_users(number_of_users, engine_name)
+    create_users(number_of_users, engine_name, hashtag_list)
   end
 
-  def create_users(num_users, engine_name) do
+  def create_users(num_users, engine_name, hashtag_list) do
     # IO.puts "Number of users is #{num_users}"
 
     Enum.each(1..num_users, fn user ->
       {:ok, _user} =
-        GenServer.start_link(Client, [engine_name], name: String.to_atom(Integer.to_string(user)))
+        GenServer.start_link(Client, [hashtag_list], name: String.to_atom(Integer.to_string(user)))
+
       IO.puts("registering created users")
-      GenServer.cast(String.to_atom(to_string(user)),{:register, user})
+      GenServer.cast(String.to_atom(to_string(user)), {:register, user})
       IO.puts("Asking users to subscribe ")
-      GenServer.cast(String.to_atom(to_string(user)),{:subscribe, user, num_users})
-      #Make each user do one random action
+      GenServer.cast(String.to_atom(to_string(user)), {:subscribe, user, num_users})
+      # Make each user do one random action
       # action_list = [1,2,3,4]
       action_list = [1]
       action = Enum.random(action_list)
+
       cond do
-        #Tweet
+        # Tweet
         action == 1 ->
-          GenServer.cast(String.to_atom(to_string(user)),{:send_tweets, user, num_users})
-        #Search a hashtag
-        # action ==2 ->
-        #   #Again we can search for one hashtag or multiple hashtags
-        #   GenServer.cast(String.to_atom(to_string(user)),{:searchHashtags, user, hashtags})
+          GenServer.cast(String.to_atom(to_string(user)), {:send_tweets, user, num_users})
+          # Search a hashtag
+          # action ==2 ->
+          #   #Again we can search for one hashtag or multiple hashtags
+          #   GenServer.cast(String.to_atom(to_string(user)),{:searchHashtags, user})
       end
     end)
   end
