@@ -3,6 +3,7 @@ defmodule Client do
     state = %{
       "hashtag_list" => Enum.at(client_state, 0),
       "user_id" => Enum.at(client_state, 1)
+
       # {}"users_list" => Enum.at(client_state,0)
     }
 
@@ -13,15 +14,19 @@ defmodule Client do
   def handle_cast({:register}, state) do
     IO.puts("Inside register")
 
-    GenServer.cast(String.to_atom("engine"), {:register_users, state["user_id"]})
+    GenServer.call(String.to_atom("engine"), {:register_users, state["user_id"]})
     {:noreply, state}
   end
 
   def handle_cast({:subscribe, num_users}, state) do
     IO.puts("Inside subscribe")
-    userToSub = Enum.random(1..num_users)
-    # {:ok, String.to_atom("engine")} = Map.fetch(state, "engine_pid")
-    GenServer.cast(String.to_atom("engine"), {:subscribe_user, userToSub, state["user_id"]})
+    numOfUsersToSubcribe = Enum.random(1..num_users)
+    Enum.each(1..numOfUsersToSubcribe, fn n->
+      userToSub = Enum.random(1..num_users)
+      if(userToSub!=state["user_id"]) do
+        GenServer.cast(String.to_atom("engine"), {:subscribe_user, userToSub, state["user_id"]})
+      end
+    end)
     {:noreply, state}
   end
 
@@ -34,7 +39,7 @@ defmodule Client do
     # IO.puts("Tweet content is #{tweet_content}")
     GenServer.cast(
       String.to_atom("engine"),
-      {:handle_tweet, state["user_id"], tweet_content, state["user_id"]}
+      {:handle_tweet, state["user_id"], state["user_id"], tweet_content}
     )
 
     {:noreply, state}
@@ -102,8 +107,8 @@ defmodule Client do
     # TODO: might want to retweet.
     # maintain a list of tweets using Map.update(a,1,[],fn list -> list ++ [tweet] end)
     # %{1 => [23]}
-    retweet_list = [0, 1]
-    retweet_yes = Enum.random(retweet_list)
+
+    retweet_yes = Enum.random(0..1)
 
     cond do
       retweet_yes == 1 ->
@@ -126,11 +131,26 @@ defmodule Client do
   end
 
   def handle_cast({:reTweet, user_id, retweet}, state) do
+    # if a user has already retweeted or is the owner don't retweet.
+
     IO.puts("retweetinggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg")
     {tweet_owner, tweet_content} = retweet
-    # {:ok, engine_name} = Map.fetch(state, "engine_pid")
-    GenServer.cast(String.to_atom("engine"), {:handle_tweet, user_id, tweet_content, tweet_owner})
+
+    my_tweets = if :ets.member(:userTweets, user_id) do
+      [{user_id, my_tweets}] = :ets.lookup(:userTweets, user_id)
+      my_tweets
+    else
+      []
+    end
+
+    if tweet_owner != user_id and length(my_tweets)>0 and !Enum.member?(my_tweets, {tweet_owner, tweet_content}) do
+      IO.puts(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+      IO.inspect("#{user_id} retweeting #{tweet_content} by #{tweet_owner}")
+      IO.inspect(my_tweets)
+      GenServer.cast(String.to_atom("engine"), {:handle_retweet, user_id, tweet_owner, tweet_content})
+    end
     {:noreply, state}
+
   end
 
   # Search for tweets with a given hashtag
@@ -177,4 +197,10 @@ defmodule Client do
     IO.puts(tweets_for_mention)
     {:noreply, state}
   end
+
+  def handle_cast({:delete_account}, state) do
+    IO.puts "User is deleting the account"
+    GenServer.cast(String.to_atom("engine"), {:delete_user_account, state["user_id"]})
+  end
+
 end

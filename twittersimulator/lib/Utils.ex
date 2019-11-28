@@ -10,7 +10,7 @@ defmodule Utils do
       :public,
       :named_table,
       {:read_concurrency, true},
-      {:write_concurrency, true}
+      #{:write_concurrency, true}
     ])
 
     :ets.new(:hashtags, [
@@ -37,7 +37,6 @@ defmodule Utils do
     :ets.insert_new(:users, {user_id, []})
     # IO.puts("Mention id is #{mention_id}")
     :ets.insert_new(:userLogIn, {user_id, true})
-    # :ets.insert_new(:mentionIds, {mention_id, []})
   end
 
   def login_user(user_id) do
@@ -48,7 +47,7 @@ defmodule Utils do
     :ets.insert(:userLogIn, {user_id, false})
   end
 
-  def insert_into_hashtagTable(list_of_hashtags, tweet_content) do
+  def insert_into_hashtagTable(list_of_hashtags, tweet_owner, tweet_content) do
     IO.inspect(list_of_hashtags)
 
     if(length(list_of_hashtags) > 0) do
@@ -62,11 +61,11 @@ defmodule Utils do
             :ets.member(:hashtags, each_ht) ->
               # IO.puts("hashtagggggggggggggggggggggggggggggggggggggggg #{each_ht}")
               [{_, tweets_for_ht}] = :ets.lookup(:hashtags, each_ht)
-              tweets_for_ht ++ [tweet_content]
+              tweets_for_ht ++ [{tweet_owner, tweet_content}]
 
             true ->
               # IO.puts("nooooooooooooooooooooooooooooooooooooooo ")
-              [tweet_content]
+              [{tweet_owner, tweet_content}]
           end
 
         :ets.insert(:hashtags, {each_ht, ht_tweet})
@@ -77,17 +76,17 @@ defmodule Utils do
     end
   end
 
-  def insert_into_mentionsTable(mentions_list, tweet_content) do
+  def insert_into_mentionsTable(mentions_list, tweet_owner, tweet_content) do
     if(length(mentions_list) > 0) do
       Enum.each(mentions_list, fn each_mention ->
         mention_tweet =
           cond do
             :ets.member(:mentionIds, each_mention) ->
               [{_, tweets_for_mention}] = :ets.lookup(:mentionIds, each_mention)
-              tweets_for_mention ++ [tweet_content]
+              tweets_for_mention ++ [{tweet_owner, tweet_content}]
 
             true ->
-              [tweet_content]
+              [{tweet_owner, tweet_content}]
           end
 
         :ets.insert(:mentionIds, {each_mention, mention_tweet})
@@ -202,17 +201,28 @@ defmodule Utils do
     # tweets_for_mention will be list of lists
     # TODO correct this get_tweets_with_mentions as we have to search for the intersection of mention ids we send
     tweets_for_mention =
-      Enum.filter(search_mentions, fn search_mention ->
+      Enum.map(search_mentions, fn search_mention ->
         cond do
           :ets.member(:mentionIds, search_mention) ->
             [{_, listOfTweetsforMention}] = :ets.lookup(:mentionIds, search_mention)
             listOfTweetsforMention
 
           true ->
-            nil
+            []
         end
       end)
-
+    IO.puts "Tweet list is"
+    IO.inspect(tweets_for_mention)
     tweets_for_mention
   end
+
+  def delete_user(user_id) do
+    :ets.delete(:users, user_id)
+    :ets.delete(:userTweets, user_id)
+  end
+
+  def insert_into_userTweets(user_id, tweet) do
+    :ets.insert(:userTweets, {user_id, tweet})
+  end
+
 end
