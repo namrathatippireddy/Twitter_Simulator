@@ -207,30 +207,30 @@ test "check retweet doesn't happen when owner retweets his own tweet" do
 
   end
 
-'''
-  test "Check if the tweets are delivered to only logged in users" do
-    {:ok, engine} = GenServer.start_link(Engine, [], name: String.to_atom("engine"))
-    {:ok, client1} =
-      GenServer.start_link(Client, [["#123","#3"], 1],
-        name: String.to_atom(Integer.to_string(1)))
+#
+#   test "Check if the tweets are delivered to only logged in users" do
+#     {:ok, engine} = GenServer.start_link(Engine, [], name: String.to_atom("engine"))
+#     {:ok, client1} =
+#       GenServer.start_link(Client, [["#123","#3"], 1],
+#         name: String.to_atom(Integer.to_string(1)))
 
-      {:ok, client2} =
-          GenServer.start_link(Client, [["#123","#3"], 2],
-            name: String.to_atom(Integer.to_string(2)))
-    Utils.update_following_list(2, 1)
-    Utils.update_followers_list(2, 1)
-    # 1 is following 2 and if 2 makes a tweet, it shouldn't be received by 1 if it has logged out
-    # Now logout 1
-    Utils.logout_user(1)
-    #2 is tweeting with itself as the owner
-    GenServer.cast( String.to_atom("engine"), {:handle_tweet, 2, 2, "This is a tweet"})
+#       {:ok, client2} =
+#           GenServer.start_link(Client, [["#123","#3"], 2],
+#             name: String.to_atom(Integer.to_string(2)))
+#     Utils.update_following_list(2, 1)
+#     Utils.update_followers_list(2, 1)
+#     # 1 is following 2 and if 2 makes a tweet, it shouldn't be received by 1 if it has logged out
+#     # Now logout 1
+#     Utils.logout_user(1)
+#     #2 is tweeting with itself as the owner
+#     GenServer.cast( String.to_atom("engine"), {:handle_tweet, 2, 2, "This is a tweet"})
 
-    Process.sleep(20)
+#     Process.sleep(20)
 
 
 
-  end
-'''
+#   end
+#
   test "Deleting a user" do
     Utils.initialize_tables()
     Utils.register_users(1)
@@ -239,6 +239,33 @@ test "check retweet doesn't happen when owner retweets his own tweet" do
     assert :ets.lookup(:userTweets, 1) == []
     assert :ets.lookup(:users, 1) == []
   end
-  
+
+  test "Test querying by a user; user gets all tweets subscribed to" do
+    Utils.initialize_tables()
+    #1 is following 2,3,4
+    :ets.insert(:following, {1, [2,3,4]})
+    # write some tweet for each user: 2, 3,4
+    :ets.insert(:userTweets, {2, [{2,"This"}]})
+    :ets.insert(:userTweets, {3, [{3,"is for"}]})
+    :ets.insert(:userTweets, {4, [{4,"user 1"}]})
+
+
+    list = Utils.get_subscribed_tweets(1)
+
+    assert list == [{2,"This"},{3,"is for"},{4,"user 1"}]
+  end
+
+  test "Check for multiple tweets and same mentionid" do
+    Utils.initialize_tables()
+    tweet_content1 = "This tweet has one mention @hey"
+    tweet_content2 = "This tweet also has same mention @hey"
+    list_of_mentions = Utils.get_mentions(tweet_content1)
+    Utils.insert_into_mentionsTable(list_of_mentions, 1, tweet_content1)
+    list_of_mentions2 = Utils.get_mentions(tweet_content2)
+    Utils.insert_into_mentionsTable(list_of_mentions2, 1, tweet_content2)
+
+      [{_, tweets_for_mention}] = :ets.lookup(:mentionIds, "@hey")
+    assert tweets_for_mention == [{1, tweet_content1}, {1, tweet_content2}]
+  end
 
 end

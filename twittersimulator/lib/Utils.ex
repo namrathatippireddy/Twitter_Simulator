@@ -33,7 +33,7 @@ defmodule Utils do
   end
 
   def register_users(user_id) do
-    IO.puts("Inside engine and registering users")
+    #IO.puts("Inside engine and registering users")
     :ets.insert_new(:users, {user_id, []})
     # IO.puts("Mention id is #{mention_id}")
     :ets.insert_new(:userLogIn, {user_id, true})
@@ -48,10 +48,10 @@ defmodule Utils do
   end
 
   def insert_into_hashtagTable(list_of_hashtags, tweet_owner, tweet_content) do
-    IO.inspect(list_of_hashtags)
+    #IO.inspect(list_of_hashtags)
 
     if(length(list_of_hashtags) > 0) do
-      IO.puts("handling tweet #{list_of_hashtags}")
+      #IO.puts("handling tweet #{list_of_hashtags}")
 
       Enum.each(list_of_hashtags, fn each_ht ->
         # IO.inspect(">>>>>>>>>>>>>>>>>>>>>>>>>> #{each_ht} ")
@@ -117,7 +117,7 @@ defmodule Utils do
 
   def get_hashtags(tweet_content) do
     list_of_hts1 = Regex.scan(~r/\B#[a-zA-Z0-9_]+/, tweet_content)
-    IO.inspect(list_of_hts1)
+    #IO.inspect(list_of_hts1)
 
     list_of_hts =
       if length(list_of_hts1) != 0 do
@@ -131,7 +131,7 @@ defmodule Utils do
 
   def get_mentions(tweet_content) do
     list_of_mentions1 = Regex.scan(~r/\B@[a-zA-Z0-9_]+/, tweet_content)
-    IO.inspect(list_of_mentions1)
+    #IO.inspect(list_of_mentions1)
 
     list_of_mentions =
       if length(list_of_mentions1) != 0 do
@@ -149,9 +149,11 @@ defmodule Utils do
     :ets.insert(:users, {userToSubscibe_id, followers_list})
   end
 
+
   def update_following_list(userToSubscibe_id, user_id) do
     # we also update the following table of the present user who called this function
     subscribed_list = get_following(userToSubscibe_id, user_id)
+    #IO.puts "subscribing"
     :ets.insert(:following, {user_id, subscribed_list})
   end
 
@@ -223,6 +225,31 @@ defmodule Utils do
 
   def insert_into_userTweets(user_id, tweet) do
     :ets.insert(:userTweets, {user_id, tweet})
+  end
+
+  def get_subscribed_tweets(user_id) do
+
+    tweets = :ets.lookup(:following, user_id)
+
+    tweet_list = if length(tweets) != 0 do
+
+      a = Enum.at(tweets,0) |> elem(1)
+        if length(a) != 0 do
+          Enum.map( a,fn user ->
+            if :ets.member(:userTweets, user) do
+              [{_,oneUserTweets}] = :ets.lookup(:userTweets, user)
+              oneUserTweets
+            else
+              []
+            end
+          end)
+        else
+        []
+        end
+      else
+        []
+      end
+    List.flatten(tweet_list)
   end
 
 end
