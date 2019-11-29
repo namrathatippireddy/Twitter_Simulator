@@ -36,8 +36,8 @@ defmodule Engine do
     # Searching for hashtags or mentions
     # We can give the query processing time here, start the timer when the query has been received and calcuate the endtime when the tweet
     # has been sent to all the subscribers
-    IO.puts("Handle tweet")
-    IO.inspect(tweet_content)
+    #IO.puts("Handle tweet")
+    #IO.inspect(tweet_content)
 
     tweet =
       cond do
@@ -63,8 +63,8 @@ defmodule Engine do
   end
 
   def handle_cast({:handle_retweet, user_id, tweet_owner, tweet_content}, state) do
-    IO.puts("Handle tweet")
-    IO.inspect(tweet_content)
+    #IO.puts("Handle tweet")
+    #IO.inspect(tweet_content)
 
     tweet =
       cond do
@@ -94,27 +94,37 @@ defmodule Engine do
           Utils.update_following_list(userToSubscibe_id, user_id)
       end
     end
-
     {:noreply, state}
   end
 
-  def handle_cast({:search_hashtags, user_id, search_hashtags}, state) do
-    tweets_for_hashtag = Utils.get_tweets_for_hashtag(search_hashtags)
-    GenServer.cast(user_id, {:search_hashtag_reply, tweets_for_hashtag})
+  def handle_call({:search_hashtags, user_id, search_hashtags}, _from,state) do
 
-    {:noreply, state}
+    start_time = System.monotonic_time()
+    IO.puts start_time
+    tweets_for_hashtag = Utils.get_tweets_for_hashtag(search_hashtags)
+    end_time = System.monotonic_time()
+    IO.puts end_time
+    IO.puts "Time taken to query a hashtag = #{end_time-start_time}"
+    {:reply, tweets_for_hashtag,state}
   end
 
   def handle_cast({:search_mentions, user_id, search_mentions}, state) do
     tweets_for_mention = Utils.get_tweets_with_mentions(search_mentions)
-    GenServer.cast(user_id, {:search_mention_reply, tweets_for_mention})
+    GenServer.cast(String.to_atom(to_string(user_id)), {:search_mention_reply, tweets_for_mention})
 
     {:noreply, state}
   end
 
   def handle_cast({:delete_user_account, user_id}, state) do
     Utils.delete_user(user_id)
+    {:noreply, state}
   end
+
+  def handle_call({:get_subscribed_tweets, user_id}, _from, state) do
+    tweet_list = Utils.get_subscribed_tweets(user_id)
+    {:reply, tweet_list, state}
+  end
+
 end
 
 

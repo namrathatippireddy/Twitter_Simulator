@@ -12,7 +12,7 @@ defmodule TwitterSimulator do
     number_of_tweets = String.to_integer(Enum.at(arguments, 1))
 
     # Start the engine
-    IO.puts("Starting engine")
+    #IO.puts("Starting engine")
 
     {:ok, engine_name} = GenServer.start_link(Engine, [], name: String.to_atom("engine"))
     # {:ok, engine_name} = GenServer.start_link(Engine, [])
@@ -21,7 +21,7 @@ defmodule TwitterSimulator do
         hashtag_id = "#h#{hashtag}"
       end)
 
-    IO.inspect(hashtag_list)
+    #IO.inspect(hashtag_list)
 
     start_simulating(number_of_users, number_of_tweets, engine_name, hashtag_list)
 
@@ -37,9 +37,24 @@ defmodule TwitterSimulator do
     # Make each user do one random action
 
     Enum.each(1..number_of_tweets, fn _count ->
-      Enum.each(1..number_of_users, fn user ->   GenServer.cast(String.to_atom(to_string(user)), {:send_tweets, number_of_users})
+      Enum.each(1..number_of_users, fn user ->
+        GenServer.cast(String.to_atom(to_string(user)), {:send_tweets, number_of_users})
     end)
     end)
+    #Process.sleep(3000)
+    #query for tweets subscribed to
+
+    start_time = System.monotonic_time()
+    IO.puts start_time
+    list = GenServer.call(String.to_atom("engine"),{:get_subscribed_tweets, Enum.random(1..number_of_users)}, :infinity)
+    end_time = System.monotonic_time()
+    IO.puts end_time
+    IO.puts "Time taken to query for subscribed tweets = #{end_time-start_time}"
+
+
+
+    #hashtags =  GenServer.call(String.to_atom(to_string(Enum.random(1..number_of_users))), {:searchHashtags},:infinity)
+
 
   end
 
@@ -52,9 +67,9 @@ defmodule TwitterSimulator do
           name: String.to_atom(Integer.to_string(user))
         )
 
-      IO.puts("registering created users")
+      #IO.puts("registering created users")
       GenServer.cast(String.to_atom(to_string(user)), {:register})
-      IO.puts("Asking users to subscribe ")
+      #IO.puts("Asking users to subscribe ")
       GenServer.cast(String.to_atom(to_string(user)), {:subscribe, num_users})
 
     end)
